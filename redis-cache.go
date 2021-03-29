@@ -11,29 +11,28 @@ import (
 
 type PostCache interface {
 	Set(key string, value string, exp time.Duration) error
-	Get(key string) (string,error)
+	Get(key string) (string, error)
 	Exists(key string) int64
-	Delete(Key string) (int64,error)
-
+	Delete(Key string) (int64, error)
 }
 
 type redisCache struct {
-	host    string
-	db      int
+	host     string
+	db       int
 	password string
-	expires time.Duration
-
+	expires  time.Duration
 }
 
+// NewRedisCache Create A new Redis Client
 func NewRedisCache() PostCache {
 	dbIndex, _ := strconv.Atoi(os.Getenv("REDIS_DB"))
 	exp, _ := time.ParseDuration(os.Getenv("REDIS_EXPIRY"))
-	host := fmt.Sprintf("%s:%s",os.Getenv("REDIS_HOST"),os.Getenv("REDIS_PORT"))
+	host := fmt.Sprintf("%s:%s", os.Getenv("REDIS_HOST"), os.Getenv("REDIS_PORT"))
 
 	//return redisCache
 	return &redisCache{
-		host:    host,
-		db:     dbIndex,
+		host:     host,
+		db:       dbIndex,
 		password: os.Getenv("REDIS_PASSWORD"),
 		expires:  exp,
 	}
@@ -47,6 +46,7 @@ func (cache *redisCache) getClient() *redis.Client {
 	})
 }
 
+//Set create a new item in redis with expiry
 func (cache *redisCache) Set(key string, value string, exp time.Duration) error {
 	client := cache.getClient()
 
@@ -60,7 +60,8 @@ func (cache *redisCache) Set(key string, value string, exp time.Duration) error 
 	return nil
 }
 
-func (cache *redisCache) Get(key string) (string,error) {
+//Get a item by key from redis
+func (cache *redisCache) Get(key string) (string, error) {
 	client := cache.getClient()
 
 	duration, err := client.TTL(key).Result()
@@ -84,7 +85,8 @@ func (cache *redisCache) Get(key string) (string,error) {
 
 }
 
-func (cache *redisCache) Delete(key string) (int64,error)  {
+//Delete item from by from redis
+func (cache *redisCache) Delete(key string) (int64, error) {
 	client := cache.getClient()
 	d, err := client.Del(key).Result()
 	if err != nil {
@@ -93,6 +95,7 @@ func (cache *redisCache) Delete(key string) (int64,error)  {
 	return d, err
 }
 
+//Exists check item is exist in redis
 func (cache *redisCache) Exists(key string) int64 {
 	client := cache.getClient()
 
@@ -104,6 +107,3 @@ func (cache *redisCache) Exists(key string) int64 {
 
 	return val
 }
-
-
-
