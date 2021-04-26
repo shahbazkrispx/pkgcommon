@@ -10,7 +10,7 @@ import (
 )
 
 type PostCache interface {
-	Set(key string, value string, exp time.Duration) error
+	Set(key string, value interface{}, exp time.Duration) error
 	Get(key string) (string, error)
 	Exists(key string) int64
 	Delete(Key string) (int64, error)
@@ -47,7 +47,7 @@ func (cache *redisCache) getClient() *redis.Client {
 }
 
 //Set create a new item in redis with expiry
-func (cache *redisCache) Set(key string, value string, exp time.Duration) error {
+func (cache *redisCache) Set(key string, value interface{}, exp time.Duration) error {
 	client := cache.getClient()
 
 	_, err := client.Ping().Result()
