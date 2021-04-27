@@ -55,7 +55,10 @@ func (cache *redisCache) Set(key string, value interface{}, exp time.Duration) e
 		return err
 	}
 	// serialize Post object to JSON
-	client.Set(key, value, exp)
+	_, err = client.Set(key, value, exp).Result()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
