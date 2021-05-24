@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/sqs"
 )
 
+//PublishMessageToSNS to AWS sns topic
 func PublishMessageToSNS(topicName string, message string, msgData map[string]*sns.MessageAttributeValue) error {
 	sess, err := BuildSession()
 	if err != nil {
