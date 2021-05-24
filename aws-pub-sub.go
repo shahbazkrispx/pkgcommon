@@ -61,6 +61,7 @@ func ReceiveMessages(svc *sqs.SQS, queueName string) ([]*sqs.Message, error) {
 	return receiveMessageOutput.Messages, nil
 }
 
+//DeleteMessage delete the message from AWS sqs
 func DeleteMessage(svc *sqs.SQS, queueName string, handle *string) error {
 	delInput := &sqs.DeleteMessageInput{
 		QueueUrl:      aws.String(GetQueueURL(queueName)),
