@@ -31,6 +31,7 @@ func PublishMessageToSNS(topicName string, message string, msgData map[string]*s
 	return nil
 }
 
+//ReceiveMessages to retrieve message from  AWS sqs
 func ReceiveMessages(svc *sqs.SQS, queueName string) ([]*sqs.Message, error) {
 
 	receiveMessagesInput := &sqs.ReceiveMessageInput{
