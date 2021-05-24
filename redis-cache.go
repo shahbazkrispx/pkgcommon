@@ -76,7 +76,7 @@ func (cache *redisCache) Get(key string) (string, error) {
 	case duration.Seconds() == -2:
 		return "", errors.New("key does not exist")
 	case duration.Seconds() == -1:
-		return "", errors.New("The key will not expire.")
+		return "", errors.New("The key will not expire  ")
 	}
 
 	val, err := client.Get(key).Result()
