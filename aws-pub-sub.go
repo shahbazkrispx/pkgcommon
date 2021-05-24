@@ -69,4 +69,6 @@ func DeleteMessage(svc *sqs.SQS, queueName string, handle *string) error {
 	if err != nil {
 		return err
 	}
+
+	return nil
 }
