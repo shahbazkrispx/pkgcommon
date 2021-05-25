@@ -21,12 +21,10 @@ func MessageAttributesBodyParser(msgBody string) (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	for k, d2 := range data["MessageAttributes"].(map[string]interface{}) {
 		v := fmt.Sprintf("%v", d2.(map[string]interface{})["Value"])
 		res[k] = v
 	}
-
 	return res, nil
 }
 
