@@ -6,7 +6,7 @@ const (
 	soldOut = 2
 )
 
-//
+//inventoryConstants
 type inventoryConstants struct {
 	Active  uint8
 	SoldOut uint8
