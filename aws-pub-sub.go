@@ -32,7 +32,7 @@ func PublishMessageToSNS(topicName string, message string, msgData map[string]*s
 }
 
 //ReceiveMessages to retrieve message from  AWS sqs
-func ReceiveMessages(svc *sqs.SQS, queueName string) ([]*sqs.Message, error) {
+func ReceiveMessages(svc *sqs.SQS, queueURL string) ([]*sqs.Message, error) {
 
 	receiveMessagesInput := &sqs.ReceiveMessageInput{
 		AttributeNames: []*string{
@@ -41,7 +41,7 @@ func ReceiveMessages(svc *sqs.SQS, queueName string) ([]*sqs.Message, error) {
 		MessageAttributeNames: []*string{
 			aws.String(sqs.QueueAttributeNameAll),
 		},
-		QueueUrl:            aws.String(GetQueueURL(queueName)),
+		QueueUrl:            aws.String(queueURL),
 		MaxNumberOfMessages: aws.Int64(10), // max 10
 		WaitTimeSeconds:     aws.Int64(3),  // max 20
 		VisibilityTimeout:   aws.Int64(20), // max 20
@@ -62,9 +62,9 @@ func ReceiveMessages(svc *sqs.SQS, queueName string) ([]*sqs.Message, error) {
 }
 
 //DeleteMessage delete the message from AWS sqs
-func DeleteMessage(svc *sqs.SQS, queueName string, handle *string) error {
+func DeleteMessage(svc *sqs.SQS, queueURL string, handle *string) error {
 	delInput := &sqs.DeleteMessageInput{
-		QueueUrl:      aws.String(GetQueueURL(queueName)),
+		QueueUrl:      aws.String(queueURL),
 		ReceiptHandle: handle,
 	}
 	_, err := svc.DeleteMessage(delInput)
