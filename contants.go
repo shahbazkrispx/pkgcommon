@@ -11,6 +11,7 @@ type inventoryConstants struct {
 	SoldOut uint8
 }
 
+//GetInventoryConstants return inventoryConstants
 func GetInventoryConstants() inventoryConstants {
 	return inventoryConstants{
 		Active:  active,
