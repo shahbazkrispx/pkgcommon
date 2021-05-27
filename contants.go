@@ -13,6 +13,7 @@ const (
 )
 
 //inventoryConstants
+//all constants related to inventory
 type inventoryConstants struct {
 	Domain     string
 	DeActive   uint8
