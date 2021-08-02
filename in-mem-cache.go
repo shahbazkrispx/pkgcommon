@@ -2,10 +2,11 @@ package pkgcommon
 
 import (
 	"fmt"
-	"github.com/patrickmn/go-cache"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/patrickmn/go-cache"
 )
 
 type InMemPostCache interface {
@@ -19,6 +20,7 @@ type inMemCache struct {
 	CleanUpInterval   time.Duration
 }
 
+// NewMemCache Create A new In memory Client
 func NewMemCache() InMemPostCache {
 	expVal, _ := strconv.ParseInt(os.Getenv("IN_MEM_DEFAULT_EXP"), 10, 64)
 	cleanUp, _ := strconv.ParseInt(os.Getenv("IN_MEM_CLEANUP_INTERVAL"), 10, 64)
