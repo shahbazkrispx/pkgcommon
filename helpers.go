@@ -3,11 +3,12 @@ package pkgcommon
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/joho/godotenv"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+
+	"github.com/joho/godotenv"
 )
 
 // MessageAttributesBodyParser will parse aws message attributes

@@ -3,10 +3,11 @@ package pkgcommon
 import (
 	"errors"
 	"fmt"
-	"github.com/go-redis/redis/v7"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/go-redis/redis/v7"
 )
 
 type PostCache interface {
