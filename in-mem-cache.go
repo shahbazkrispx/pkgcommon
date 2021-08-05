@@ -51,6 +51,7 @@ func (inMem *inMemCache) Get(key string) (string, error) {
 	return val.(string), nil
 }
 
+// delete always return 1
 func (inMem *inMemCache) Delete(key string) (int64, error) {
 	c := inMem.getInMemClient()
 	c.Delete(key)
