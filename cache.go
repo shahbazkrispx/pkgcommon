@@ -29,7 +29,7 @@ type AppCache interface {
 	Delete(Key string) (int64, error)
 }
 
-var myCache AppCache
+var MyCache AppCache
 
 // redis cache
 func InitRedisCache() {
@@ -38,7 +38,7 @@ func InitRedisCache() {
 	password := os.Getenv("REDIS_PASSWORD")
 
 	//return redisCache
-	myCache = &RedisCache{
+	MyCache = &RedisCache{
 		client: redis.NewClient(&redis.Options{
 			Addr:     host,
 			Password: password,
@@ -49,7 +49,7 @@ func InitRedisCache() {
 
 // in momory cache
 func InitInMemoryCache() {
-	myCache = &InMemoryCache{
+	MyCache = &InMemoryCache{
 		client: cache.New(5*time.Minute, 10*time.Minute),
 	}
 }
