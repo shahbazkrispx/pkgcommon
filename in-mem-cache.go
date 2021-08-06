@@ -18,7 +18,7 @@ type inMemCache struct {
 	CleanUpInterval   time.Duration
 }
 
-// NewMemCache Create A new In memory Client
+// NewMemCache Create A new In memory Client with default epx and cleanup
 func NewMemCache(defaultExp time.Duration, cleanUpExp time.Duration) InMemPostCache {
 
 	return &inMemCache{
