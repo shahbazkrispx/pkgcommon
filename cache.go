@@ -29,6 +29,7 @@ type AppCache interface {
 	Delete(Key string) (int64, error)
 }
 
+// global cache var
 var MyCache AppCache
 
 // redis cache
