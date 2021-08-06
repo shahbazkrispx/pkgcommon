@@ -12,10 +12,12 @@ import (
 	"github.com/patrickmn/go-cache"
 )
 
+// redis
 type RedisCache struct {
 	client *redis.Client
 }
 
+// in memory
 type InMemoryCache struct {
 	client *cache.Cache
 }
