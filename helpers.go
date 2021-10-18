@@ -59,9 +59,9 @@ func LoadEnvFile() {
 }
 
 func GetQueueURL(queue string) string {
-	return fmt.Sprintf("https://sqs.%s.amazonaws.com/%s/%s", os.Getenv("AWS_REGION"), os.Getenv("AWS_ACCOUNT_ID"), queue)
+	return fmt.Sprintf("https://sqs.%s.amazonaws.com/%s/%s_%s", os.Getenv("AWS_REGION"), os.Getenv("AWS_ACCOUNT_ID"), os.Getenv("APP_ENV"), queue)
 }
 
 func GetSNSArn(sns string) string {
-	return fmt.Sprintf("arn:aws:sns:%s:%s:%s", os.Getenv("AWS_REGION"), os.Getenv("AWS_ACCOUNT_ID"), sns)
+	return fmt.Sprintf("arn:aws:sns:%s:%s:%s_%s", os.Getenv("AWS_REGION"), os.Getenv("AWS_ACCOUNT_ID"), os.Getenv("APP_ENV"), sns)
 }
