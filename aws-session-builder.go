@@ -4,7 +4,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
-	"log"
 	"os"
 )
 
@@ -17,16 +16,14 @@ type Credentials struct {
 func BuildSession() (*session.Session, error) {
 	creds := GetCredentials()
 
-	sessionConfig := &aws.Config{
+	sessionConfig := aws.Config{
 		Region:      aws.String(creds.Region),
 		Credentials: credentials.NewStaticCredentials(creds.AccessKey, creds.SecretKey, ""),
 	}
 
-	sess, err := session.NewSession(sessionConfig)
-	if err != nil {
-		log.Println("Error Establishing session")
-		return nil, err
-	}
+	sess := session.Must(session.NewSessionWithOptions(session.Options{
+		Config: sessionConfig,
+	}))
 	return sess, nil
 }
 
