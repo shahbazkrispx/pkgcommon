@@ -60,10 +60,18 @@ func LoadEnvFile() {
 
 func GetQueueURL(queue string) string {
 	LoadEnvFile()
-	return fmt.Sprintf("https://sqs.%s.amazonaws.com/%s/%s_%s", os.Getenv("AWS_REGION"), os.Getenv("AWS_ACCOUNT_ID"), os.Getenv("APP_ENV"), queue)
+	if os.Getenv("APP_ENV") == "prod" || os.Getenv("APP_ENV") == "production" || os.Getenv("APP_ENV") == "" {
+		return fmt.Sprintf("https://sqs.%s.amazonaws.com/%s/%s", os.Getenv("AWS_REGION"), os.Getenv("AWS_ACCOUNT_ID"), queue)
+	} else {
+		return fmt.Sprintf("https://sqs.%s.amazonaws.com/%s/%s_%s", os.Getenv("AWS_REGION"), os.Getenv("AWS_ACCOUNT_ID"), os.Getenv("APP_ENV"), queue)
+	}
 }
 
 func GetSNSArn(sns string) string {
 	LoadEnvFile()
-	return fmt.Sprintf("arn:aws:sns:%s:%s:%s_%s", os.Getenv("AWS_REGION"), os.Getenv("AWS_ACCOUNT_ID"), os.Getenv("APP_ENV"), sns)
+	if os.Getenv("APP_ENV") == "prod" || os.Getenv("APP_ENV") == "production" || os.Getenv("APP_ENV") == "" {
+		return fmt.Sprintf("arn:aws:sns:%s:%s:%s", os.Getenv("AWS_REGION"), os.Getenv("AWS_ACCOUNT_ID"), sns)
+	} else {
+		return fmt.Sprintf("arn:aws:sns:%s:%s:%s_%s", os.Getenv("AWS_REGION"), os.Getenv("AWS_ACCOUNT_ID"), os.Getenv("APP_ENV"), sns)
+	}
 }
