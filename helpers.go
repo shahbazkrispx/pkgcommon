@@ -75,3 +75,8 @@ func GetSNSArn(sns string) string {
 		return fmt.Sprintf("arn:aws:sns:%s:%s:%s_%s", os.Getenv("AWS_REGION"), os.Getenv("AWS_ACCOUNT_ID"), os.Getenv("APP_ENV"), sns)
 	}
 }
+
+func MakeSNSArn(sns string) string {
+	LoadEnvFile()
+	return fmt.Sprintf("arn:aws:sns:%s:%s:%s", os.Getenv("AWS_REGION"), os.Getenv("AWS_ACCOUNT_ID"), sns)
+}

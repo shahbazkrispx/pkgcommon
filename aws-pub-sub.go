@@ -31,6 +31,28 @@ func PublishMessageToSNS(topicName string, message string, msgData map[string]*s
 	return nil
 }
 
+//PublishMessageToSNS to AWS sns topic ARN
+func PublishMessageToSNSByARN(topicArn string, message string, msgData map[string]*sns.MessageAttributeValue) error {
+	sess, err := BuildSession()
+	if err != nil {
+		return err
+	}
+	svc := sns.New(sess)
+
+	pubMessage := &sns.PublishInput{
+		MessageAttributes: msgData,
+		Message:           aws.String(message),
+		TopicArn:          aws.String(topicArn),
+	}
+
+	_, err = svc.Publish(pubMessage)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 //ReceiveMessages to retrieve message from  AWS sqs
 func ReceiveMessages(svc *sqs.SQS, queueURL string) ([]*sqs.Message, error) {
 
