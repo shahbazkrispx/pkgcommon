@@ -47,7 +47,6 @@ func ResponseBodyParser(body string) (map[string]interface{}, error) {
 func ServeJson(w http.ResponseWriter, status bool, message string, data interface{}, error interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(ResponseBuilder(status, message, data, error))
-	return
 }
 
 // LoadEnvFile load .env file

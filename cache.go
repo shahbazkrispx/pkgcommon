@@ -55,7 +55,7 @@ func InitInMemoryCache() {
 	}
 }
 
-//Set create a new item in redis with expiry
+// Set create a new item in redis with expiry
 func (cache *RedisCache) Set(key string, value interface{}, exp time.Duration) error {
 	_, err := cache.client.Ping().Result()
 	if err != nil {
@@ -71,14 +71,17 @@ func (cache *RedisCache) Set(key string, value interface{}, exp time.Duration) e
 	return nil
 }
 
-//Get a item by key from redis
+// Get a item by key from redis
 func (cache *RedisCache) Get(key string) (string, error) {
 
 	duration, err := cache.client.TTL(key).Result()
+	if err != nil {
+		return "", err
+	}
 
 	switch {
 	case cache.client.Keys(key) == nil:
-		return "", errors.New("Invalid Code")
+		return "", errors.New("invalid code")
 	case duration.Seconds() == -2:
 		return "", errors.New("key does not exist")
 	case duration.Seconds() == -1:
@@ -95,7 +98,7 @@ func (cache *RedisCache) Get(key string) (string, error) {
 
 }
 
-//Delete item from by from redis
+// Delete item from by from redis
 func (cache *RedisCache) Delete(key string) (int64, error) {
 
 	d, err := cache.client.Del(key).Result()
@@ -105,7 +108,7 @@ func (cache *RedisCache) Delete(key string) (int64, error) {
 	return d, err
 }
 
-//Exists check item is exist in redis
+// Exists check item is exist in redis
 func (cache *RedisCache) Exists(key string) int64 {
 
 	val, err := cache.client.Exists(key).Result()
@@ -117,7 +120,7 @@ func (cache *RedisCache) Exists(key string) int64 {
 	return val
 }
 
-//in memory
+// in memory
 func (cache *InMemoryCache) Set(key string, value interface{}, exp time.Duration) error {
 
 	cache.client.Set(key, value, exp)
@@ -141,7 +144,7 @@ func (cache *InMemoryCache) Delete(key string) (int64, error) {
 	return 1, nil
 }
 
-//Exists check item is exist in redis
+// Exists check item is exist in redis
 func (cache *InMemoryCache) Exists(key string) int64 {
 
 	_, expTime, found := cache.client.GetWithExpiration(key)
