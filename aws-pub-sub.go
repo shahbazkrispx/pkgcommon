@@ -1,19 +1,33 @@
 package pkgcommon
 
 import (
+	"context"
 	"errors"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/sns"
 	"github.com/aws/aws-sdk-go/service/sqs"
 )
 
-//PublishMessageToSNS to AWS sns topic
-func PublishMessageToSNS(topicName string, message string, msgData map[string]*sns.MessageAttributeValue) error {
-	sess, err := BuildSession()
+func PublishWithContext(ctx context.Context, publishInput *sns.PublishInput) error {
+	awsSession, err := BuildSession()
 	if err != nil {
 		return err
 	}
-	svc := sns.New(sess)
+	svc := sns.New(awsSession)
+
+	_, err = svc.PublishWithContext(ctx, publishInput)
+	return err
+
+}
+
+// PublishMessageToSNS to AWS sns topic
+func PublishMessageToSNS(topicName string, message string, msgData map[string]*sns.MessageAttributeValue) error {
+	awsSession, err := BuildSession()
+	if err != nil {
+		return err
+	}
+	svc := sns.New(awsSession)
 
 	userCreatedTopic := GetSNSArn(topicName)
 
@@ -31,13 +45,13 @@ func PublishMessageToSNS(topicName string, message string, msgData map[string]*s
 	return nil
 }
 
-//PublishMessageToSNS to AWS sns topic ARN
+// PublishMessageToSNS to AWS sns topic ARN
 func PublishMessageToSNSByARN(topicArn string, message string, msgData map[string]*sns.MessageAttributeValue) error {
-	sess, err := BuildSession()
+	awsSession, err := BuildSession()
 	if err != nil {
 		return err
 	}
-	svc := sns.New(sess)
+	svc := sns.New(awsSession)
 
 	pubMessage := &sns.PublishInput{
 		MessageAttributes: msgData,
@@ -45,7 +59,7 @@ func PublishMessageToSNSByARN(topicArn string, message string, msgData map[strin
 		TopicArn:          aws.String(topicArn),
 	}
 
-	_, err = svc.Publish(pubMessage)
+	_, err = svc.PublishWithContext(context.Background(), pubMessage)
 	if err != nil {
 		return err
 	}
@@ -53,7 +67,7 @@ func PublishMessageToSNSByARN(topicArn string, message string, msgData map[strin
 	return nil
 }
 
-//ReceiveMessages to retrieve message from  AWS sqs
+// ReceiveMessages to retrieve message from  AWS sqs
 func ReceiveMessages(svc *sqs.SQS, queueURL string) ([]*sqs.Message, error) {
 
 	receiveMessagesInput := &sqs.ReceiveMessageInput{
@@ -83,7 +97,7 @@ func ReceiveMessages(svc *sqs.SQS, queueURL string) ([]*sqs.Message, error) {
 	return receiveMessageOutput.Messages, nil
 }
 
-//DeleteMessage delete the message from AWS sqs
+// DeleteMessage delete the message from AWS sqs
 func DeleteMessage(svc *sqs.SQS, queueURL string, handle *string) error {
 	delInput := &sqs.DeleteMessageInput{
 		QueueUrl:      aws.String(queueURL),

@@ -85,7 +85,7 @@ func (cache *RedisCache) Get(key string) (string, error) {
 	case duration.Seconds() == -2:
 		return "", errors.New("key does not exist")
 	case duration.Seconds() == -1:
-		return "", errors.New("The key will not expire  ")
+		return "", errors.New("the key will not expire")
 	}
 
 	val, err := cache.client.Get(key).Result()
@@ -114,7 +114,6 @@ func (cache *RedisCache) Exists(key string) int64 {
 	val, err := cache.client.Exists(key).Result()
 	if err != nil {
 		panic(err)
-		return -1
 	}
 
 	return val
@@ -148,7 +147,7 @@ func (cache *InMemoryCache) Delete(key string) (int64, error) {
 func (cache *InMemoryCache) Exists(key string) int64 {
 
 	_, expTime, found := cache.client.GetWithExpiration(key)
-	isExpired := math.Signbit(float64(expTime.Sub(time.Now())))
+	isExpired := math.Signbit(float64(time.Until(expTime)))
 	if found && isExpired {
 		return 1
 	}
