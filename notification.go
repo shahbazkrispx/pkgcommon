@@ -99,7 +99,7 @@ func (w *notification) build() *sns.PublishInput {
 	}
 	// Add non-empty attributes only
 	if w.Type != "" {
-		input.MessageAttributes["type"] = &sns.MessageAttributeValue{
+		attributes["type"] = &sns.MessageAttributeValue{
 			DataType:    aws.String("String"),
 			StringValue: aws.String(w.Type),
 		}
