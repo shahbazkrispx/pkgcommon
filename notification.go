@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/sns"
@@ -106,7 +107,9 @@ func (w *notification) build() *sns.PublishInput {
 	}
 
 	if w.TypeID != "" {
-		input.MessageDeduplicationId = aws.String(w.TypeID)
+		if strings.Contains(w.Topic, "fifo") {
+			input.MessageDeduplicationId = aws.String(w.TypeID)
+		}
 
 		attributes["typeId"] = &sns.MessageAttributeValue{
 			DataType:    aws.String("String"),
