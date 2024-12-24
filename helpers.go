@@ -14,20 +14,46 @@ import (
 // MessageAttributesBodyParser will parse aws message attributes
 // @params body string
 // @returns map string with string keys or error
+// MessageAttributesBodyParser will parse aws message attributes more efficiently
+// @params body string
+// @returns map string with string keys or error
 func MessageAttributesBodyParser(msgBody string) (map[string]string, error) {
-	var data map[string]interface{}
+	// Pre-allocate result map
 	res := make(map[string]string)
 
-	err := json.Unmarshal([]byte(msgBody), &data)
-	if err != nil {
+	// Parse JSON directly into a map structure
+	var data struct {
+		MessageAttributes map[string]struct {
+			Value interface{} `json:"Value"`
+		} `json:"MessageAttributes"`
+	}
+
+	if err := json.Unmarshal([]byte(msgBody), &data); err != nil {
 		return nil, err
 	}
-	for k, d2 := range data["MessageAttributes"].(map[string]interface{}) {
-		v := fmt.Sprintf("%v", d2.(map[string]interface{})["Value"])
-		res[k] = v
+
+	// Extract values directly into result map
+	for k, attr := range data.MessageAttributes {
+		res[k] = fmt.Sprint(attr.Value)
 	}
+
 	return res, nil
 }
+
+// func MessageAttributesBodyParser(msgBody string) (map[string]string, error) {
+// 	var data map[string]interface{}
+// 	res := make(map[string]string)
+
+// 	err := json.Unmarshal([]byte(msgBody), &data)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	for k, d2 := range data["MessageAttributes"].(map[string]interface{}) {
+// 		v := fmt.Sprintf("%v", d2.(map[string]interface{})["Value"])
+// 		res[k] = v
+// 	}
+// 	return res, nil
+// }
 
 // ResponseBodyParser will parse your api response
 // @params body string

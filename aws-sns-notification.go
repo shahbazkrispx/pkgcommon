@@ -5,25 +5,25 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/sns"
 	"gorm.io/datatypes"
 )
 
-// notification represents a web notification message with the following fields:
+// SNSNotification represents a web SNSNotification message with the following fields:
 // - Topic: The SNS topic to publish to
-// - Message: The notification message content
-// - Recipients: The recipients of the notification (must be JSON serializable)
+// - Message: The SNSNotification message content
+// - Recipients: The recipients of the SNSNotification (must be JSON serializable)
 // - Body: Optional additional data to include (must be JSON serializable)
-// - Type: The notification type identifier
+// - Type: The SNSNotification type identifier
 // - TypeID: A unique ID for deduplication
-type notification struct {
-	Topic      string `json:"topic"`
-	Message    string `json:"message"`
+type SNSNotification struct {
+	IsFIFO     bool   `json:"is_fifo"`
+	Topic      string `json:"topic" validate:"required"`
+	Message    string `json:"message" validate:"required"`
 	Subject    string `json:"subject"`
-	Recipients any    `json:"recipient"`
+	Recipients any    `json:"recipient" validate:"required"`
 	Body       any    `json:"body"`
 	Type       string `json:"type"`
 	TypeID     string `json:"type_id"`
@@ -32,29 +32,9 @@ type notification struct {
 // maxSNSMessageSize defines the maximum size in bytes for an SNS message (256KB)
 const maxSNSMessageSize = 256 * 1024
 
-// NewNotification creates a new WebNotification with the specified parameters
-// topic: The SNS topic name
-// message: The notification message content
-// notificationType: The type of notification
-// typeID: A unique ID for deduplication
-// recipients: The notification recipients (must be JSON serializable)
-// body: Optional additional data to include (must be JSON serializable)
-// Returns a new notification instance
-func NewNotification(topic, message, subject, notificationType, typeID string, recipients any, body ...any) *notification {
-	return &notification{
-		Topic:      topic,
-		Message:    message,
-		Subject:    subject,
-		Recipients: recipients,
-		Body:       body,
-		TypeID:     typeID,
-		Type:       notificationType,
-	}
-}
-
 // Send publishes the notification to SNS after validating the message
 // Returns an error if validation fails or the publish fails
-func (w *notification) Send(ctx context.Context) error {
+func (w *SNSNotification) Send(ctx context.Context) error {
 	if err := w.validate(); err != nil {
 		return err
 	}
@@ -63,7 +43,7 @@ func (w *notification) Send(ctx context.Context) error {
 
 // parseBody serializes the Body field to JSON if present
 // Returns an error if JSON serialization fails
-func (w *notification) parseBody() error {
+func (w *SNSNotification) parseBody() error {
 	if w.Body == nil {
 		return nil
 	}
@@ -77,7 +57,7 @@ func (w *notification) parseBody() error {
 
 // parseRecipients serializes the Recipients field to JSON
 // Returns an error if Recipients is nil or JSON serialization fails
-func (w *notification) parseRecipients() error {
+func (w *SNSNotification) parseRecipients() error {
 	if w.Recipients == nil {
 		return fmt.Errorf("at least one recipient is required")
 	}
@@ -91,7 +71,7 @@ func (w *notification) parseRecipients() error {
 
 // build creates SNS message attributes from the notification
 // Returns an SNS PublishInput with the notification data and attributes
-func (w *notification) build() *sns.PublishInput {
+func (w *SNSNotification) build() *sns.PublishInput {
 	attributes := make(map[string]*sns.MessageAttributeValue)
 	input := &sns.PublishInput{
 		TopicArn: aws.String(w.getTopic()),
@@ -107,7 +87,7 @@ func (w *notification) build() *sns.PublishInput {
 	}
 
 	if w.TypeID != "" {
-		if strings.Contains(w.Topic, "fifo") {
+		if w.IsFIFO {
 			input.MessageDeduplicationId = aws.String(w.TypeID)
 		}
 
@@ -139,7 +119,7 @@ func (w *notification) build() *sns.PublishInput {
 
 // validateMessageSize checks if the total message size is within SNS limits
 // Returns an error if the message exceeds maxSNSMessageSize
-func (w *notification) validateMessageSize() error {
+func (w *SNSNotification) validateMessageSize() error {
 	msgSize := len(w.Message) + len(w.Subject) + len(w.Body.(datatypes.JSON).String())
 	if msgSize > maxSNSMessageSize {
 		return fmt.Errorf("notification exceeds maximum SNS message size of %d bytes", maxSNSMessageSize)
@@ -149,7 +129,7 @@ func (w *notification) validateMessageSize() error {
 
 // validate checks if all required fields are present and valid
 // Returns an error if validation fails
-func (w *notification) validate() error {
+func (w *SNSNotification) validate() error {
 	if w.Topic == "" {
 		return errors.New("topic is required")
 	}
@@ -174,6 +154,6 @@ func (w *notification) validate() error {
 // getTopic returns the full SNS ARN for the notification's topic
 // by calling GetSNSArn with the Topic field value.
 // This converts the topic name into a complete SNS topic ARN.
-func (w *notification) getTopic() string {
+func (w *SNSNotification) getTopic() string {
 	return GetSNSArn(w.Topic)
 }
