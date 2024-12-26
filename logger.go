@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"runtime"
 	"time"
 
 	"github.com/gofrs/uuid/v5"
@@ -27,12 +28,11 @@ type loggerOptions struct {
 }
 
 // NewLogger creates a new logger instance with required options
-func NewLogger(db *gorm.DB, logFor string, err error, errorDetail string) *loggerOptions {
+func NewLogger(db *gorm.DB, logFor string, err error) *loggerOptions {
 	return &loggerOptions{
-		LogFor:      logFor,
-		ErrorDetail: errorDetail,
-		Error:       err,
-		DB:          db,
+		LogFor: logFor,
+		Error:  err,
+		DB:     db,
 	}
 }
 
@@ -43,16 +43,20 @@ func (l *loggerOptions) WithData(logData LogData) *loggerOptions {
 }
 
 // Log executes the logging process
-func (l *loggerOptions) Log() error {
-	if l.DB == nil {
-		panic("Log Error - DB is not initialized")
-	}
-
+func (l *loggerOptions) Log() {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Printf("Recovered from panic in Logger: %v", r)
 		}
 	}()
+
+	if l.DB == nil {
+		panic("Log Error - DB is not initialized")
+	}
+
+	pc, filename, line, _ := runtime.Caller(1)
+	// Log to console
+	l.ErrorDetail = fmt.Sprintf("[error] in %s[%s: %d] %v", runtime.FuncForPC(pc).Name(), filename, line, l.Error)
 
 	logEntry := map[string]interface{}{
 		"id":           uuid.Must(uuid.NewV7()).String(),
@@ -67,7 +71,7 @@ func (l *loggerOptions) Log() error {
 	if os.Getenv("APP_ENV") == "prod" && l.Data.Data().Data != nil {
 		alert := ServiceAlert{
 			Service:        os.Getenv("APP_NAME"),
-			Detail:         logEntry["detail"].(string),
+			Detail:         l.ErrorDetail,
 			FallbackDetail: logEntry["error"].(string),
 			Title:          l.LogFor,
 			TopicName:      "services-alerts",
@@ -83,8 +87,6 @@ func (l *loggerOptions) Log() error {
 
 	// Log to database
 	if err := l.DB.Table("error_logs").Create(&logEntry).Error; err != nil {
-		return fmt.Errorf("failed to create error log: %w", err)
+		panic(fmt.Sprintf("Failed to log error: %v", err))
 	}
-
-	return nil
 }
