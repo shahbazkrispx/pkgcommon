@@ -14,6 +14,11 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 )
 
+func init() {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	LoadEnvFile()
+}
+
 const (
 	maxWorkers        = 100
 	maxMessages       = 10
