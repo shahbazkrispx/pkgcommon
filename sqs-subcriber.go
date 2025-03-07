@@ -2,9 +2,7 @@ package pkgcommon
 
 import (
 	"context"
-	"fmt"
 	"log"
-	"os"
 	"sync"
 	"time"
 
@@ -47,9 +45,6 @@ func NewSQSSubscriber(queueName string, workerCount int) (*SQSSubscriber, error)
 	client := sqs.NewFromConfig(cfg)
 	ctx, cancel := context.WithCancel(context.Background())
 
-	if os.Getenv("APP_ENV") != "prod" && os.Getenv("APP_ENV") != "production" {
-		queueName = fmt.Sprintf("%s_%s", os.Getenv("APP_ENV"), queueName)
-	}
 	return &SQSSubscriber{
 		client:      client,
 		queueURL:    aws.String(GetQueueURL(queueName)),
