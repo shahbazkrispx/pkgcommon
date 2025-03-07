@@ -19,9 +19,9 @@ func init() {
 	LoadEnvFile()
 }
 
-func isNonProductionEnv() bool {
+func isProductionEnv() bool {
 	env := os.Getenv("APP_ENV")
-	return env != "prod" && env != "production"
+	return env == "prod" || env == "production"
 }
 
 const (
@@ -52,7 +52,7 @@ func NewSQSSubscriber(queueName string, workerCount int) (*SQSSubscriber, error)
 	client := sqs.NewFromConfig(cfg)
 	ctx, cancel := context.WithCancel(context.Background())
 
-	if isNonProductionEnv() {
+	if !isProductionEnv() {
 		queueName = fmt.Sprintf("%s_%s", os.Getenv("APP_ENV"), queueName)
 	}
 
