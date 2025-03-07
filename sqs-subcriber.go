@@ -50,19 +50,9 @@ func NewSQSSubscriber(queueName string, workerCount int) (*SQSSubscriber, error)
 	if os.Getenv("APP_ENV") != "prod" && os.Getenv("APP_ENV") != "production" {
 		queueName = fmt.Sprintf("%s_%s", os.Getenv("APP_ENV"), queueName)
 	}
-
-	result, err := client.GetQueueUrl(ctx, &sqs.GetQueueUrlInput{
-		QueueOwnerAWSAccountId: aws.String(os.Getenv("AWS_ACCOUNT_ID")),
-		QueueName:              aws.String(queueName),
-	})
-	if err != nil {
-		cancel()
-		return nil, err
-	}
-
 	return &SQSSubscriber{
 		client:      client,
-		queueURL:    result.QueueUrl,
+		queueURL:    aws.String(GetQueueURL(queueName)),
 		workerCount: workerCount,
 		ctx:         ctx,
 		cancel:      cancel,
