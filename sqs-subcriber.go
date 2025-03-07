@@ -19,6 +19,11 @@ func init() {
 	LoadEnvFile()
 }
 
+func isNonProductionEnv() bool {
+	env := os.Getenv("APP_ENV")
+	return env != "prod" && env != "production"
+}
+
 const (
 	maxWorkers        = 100
 	maxMessages       = 10
@@ -47,12 +52,13 @@ func NewSQSSubscriber(queueName string, workerCount int) (*SQSSubscriber, error)
 	client := sqs.NewFromConfig(cfg)
 	ctx, cancel := context.WithCancel(context.Background())
 
-	if os.Getenv("APP_ENV") != "prod" || os.Getenv("APP_ENV") != "production" || os.Getenv("APP_ENV") != "" {
+	if isNonProductionEnv() {
 		queueName = fmt.Sprintf("%s_%s", os.Getenv("APP_ENV"), queueName)
 	}
 
 	result, err := client.GetQueueUrl(ctx, &sqs.GetQueueUrlInput{
-		QueueName: aws.String(queueName),
+		QueueOwnerAWSAccountId: aws.String(os.Getenv("AWS_ACCOUNT_ID")),
+		QueueName:              aws.String(queueName),
 	})
 	if err != nil {
 		cancel()
