@@ -137,9 +137,6 @@ func (w *SNSNotification) validate() error {
 	if w.Message == "" {
 		return errors.New("message is required")
 	}
-	if w.Recipients == nil {
-		return errors.New("at least one recipient is required")
-	}
 	if err := w.parseRecipients(); err != nil && !w.IsServiceToService {
 		return err
 	}
