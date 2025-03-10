@@ -19,14 +19,15 @@ import (
 // - Type: The SNSNotification type identifier
 // - TypeID: A unique ID for deduplication
 type SNSNotification struct {
-	IsFIFO     bool   `json:"is_fifo"`
-	Topic      string `json:"topic" validate:"required"`
-	Message    string `json:"message" validate:"required"`
-	Subject    string `json:"subject"`
-	Recipients any    `json:"recipient" validate:"required"`
-	Body       any    `json:"body"`
-	Type       string `json:"type"`
-	TypeID     string `json:"type_id"`
+	IsFIFO             bool   `json:"is_fifo"`
+	Topic              string `json:"topic" validate:"required"`
+	Message            string `json:"message" validate:"required"`
+	Subject            string `json:"subject"`
+	Recipients         any    `json:"recipient" validate:"required"`
+	Body               any    `json:"body"`
+	Type               string `json:"type"`
+	TypeID             string `json:"type_id"`
+	IsServiceToService bool   `json:"is_service_to_service"`
 }
 
 // maxSNSMessageSize defines the maximum size in bytes for an SNS message (256KB)
@@ -139,7 +140,7 @@ func (w *SNSNotification) validate() error {
 	if w.Recipients == nil {
 		return errors.New("at least one recipient is required")
 	}
-	if err := w.parseRecipients(); err != nil {
+	if err := w.parseRecipients(); err != nil && !w.IsServiceToService {
 		return err
 	}
 	if err := w.parseBody(); err != nil {
