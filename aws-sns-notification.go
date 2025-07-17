@@ -19,15 +19,16 @@ import (
 // - Type: The SNSNotification type identifier
 // - TypeID: A unique ID for deduplication
 type SNSNotification struct {
-	IsFIFO             bool   `json:"is_fifo"`
-	Topic              string `json:"topic" validate:"required"`
-	Message            string `json:"message" validate:"required"`
-	Subject            string `json:"subject"`
-	Recipients         any    `json:"recipient" validate:"required"`
-	Body               any    `json:"body"`
-	Type               string `json:"type"`
-	TypeID             string `json:"type_id"`
-	IsServiceToService bool   `json:"is_service_to_service"`
+	IsFIFO                 bool                                  `json:"is_fifo"`
+	Topic                  string                                `json:"topic" validate:"required"`
+	Message                string                                `json:"message" validate:"required"`
+	Subject                string                                `json:"subject"`
+	Recipients             any                                   `json:"recipient" validate:"required"`
+	Body                   any                                   `json:"body"`
+	Type                   string                                `json:"type"`
+	TypeID                 string                                `json:"type_id"`
+	IsServiceToService     bool                                  `json:"is_service_to_service"`
+	ExtraMessageAttributes map[string]*sns.MessageAttributeValue `json:"extra_message_attributes"`
 }
 
 // maxSNSMessageSize defines the maximum size in bytes for an SNS message (256KB)
@@ -113,6 +114,12 @@ func (w *SNSNotification) build() *sns.PublishInput {
 	}
 	if len(attributes) > 0 {
 		input.MessageAttributes = attributes
+	}
+
+	if w.ExtraMessageAttributes != nil {
+		for k, v := range w.ExtraMessageAttributes {
+			attributes[k] = v
+		}
 	}
 
 	return input
