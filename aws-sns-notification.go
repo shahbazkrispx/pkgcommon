@@ -23,10 +23,11 @@ type SNSNotification struct {
 	Topic                  string                                `json:"topic" validate:"required"`
 	Message                string                                `json:"message" validate:"required"`
 	Subject                string                                `json:"subject"`
-	Recipients             any                                   `json:"recipient" validate:"required"`
+	Recipients             any                                   `json:"recipients" validate:"required"`
 	Body                   any                                   `json:"body"`
 	Type                   string                                `json:"type"`
 	TypeID                 string                                `json:"type_id"`
+	MessageGroupID         string                                `json:"message_group_id"`
 	IsServiceToService     bool                                  `json:"is_service_to_service"`
 	ExtraMessageAttributes map[string]*sns.MessageAttributeValue `json:"extra_message_attributes"`
 }
@@ -78,7 +79,10 @@ func (w *SNSNotification) build() *sns.PublishInput {
 	input := &sns.PublishInput{
 		TopicArn: aws.String(w.getTopic()),
 		Message:  aws.String(w.Message),
-		Subject:  aws.String(w.Subject),
+	}
+
+	if w.Subject != "" {
+		input.Subject = aws.String(w.Subject)
 	}
 	// Add non-empty attributes only
 	if w.Type != "" {
@@ -91,6 +95,9 @@ func (w *SNSNotification) build() *sns.PublishInput {
 	if w.TypeID != "" {
 		if w.IsFIFO {
 			input.MessageDeduplicationId = aws.String(w.TypeID)
+			if w.MessageGroupID != "" {
+				input.MessageGroupId = aws.String(w.MessageGroupID)
+			}
 		}
 
 		attributes["typeId"] = &sns.MessageAttributeValue{
@@ -101,36 +108,62 @@ func (w *SNSNotification) build() *sns.PublishInput {
 
 	if recipients, ok := w.Recipients.(datatypes.JSON); ok {
 		attributes["recipients"] = &sns.MessageAttributeValue{
-			DataType:    aws.String("String.Array"),
+			DataType:    aws.String("String"),
 			StringValue: aws.String(recipients.String()),
 		}
 	}
 
 	if body, ok := w.Body.(datatypes.JSON); ok {
 		attributes["body"] = &sns.MessageAttributeValue{
-			DataType:    aws.String("String.Array"),
+			DataType:    aws.String("String"),
 			StringValue: aws.String(body.String()),
 		}
 	}
-	if len(attributes) > 0 {
-		input.MessageAttributes = attributes
-	}
 
+	// Add extra message attributes before setting input.MessageAttributes
 	if w.ExtraMessageAttributes != nil {
 		for k, v := range w.ExtraMessageAttributes {
 			attributes[k] = v
 		}
 	}
 
+	if len(attributes) > 0 {
+		input.MessageAttributes = attributes
+	}
 	return input
 }
 
 // validateMessageSize checks if the total message size is within SNS limits
 // Returns an error if the message exceeds maxSNSMessageSize
 func (w *SNSNotification) validateMessageSize() error {
-	msgSize := len(w.Message) + len(w.Subject) + len(w.Body.(datatypes.JSON).String())
+	var bodySize, recipientsSize int
+
+	if w.Body != nil {
+		if body, ok := w.Body.(datatypes.JSON); ok {
+			bodySize = len(body.String())
+		}
+	}
+
+	if w.Recipients != nil {
+		if recipients, ok := w.Recipients.(datatypes.JSON); ok {
+			recipientsSize = len(recipients.String())
+		}
+	}
+
+	// Include all message attribute sizes
+	attributeSize := len(w.Type) + len(w.TypeID) + bodySize + recipientsSize
+	if w.ExtraMessageAttributes != nil {
+		for k, v := range w.ExtraMessageAttributes {
+			attributeSize += len(k)
+			if v.StringValue != nil {
+				attributeSize += len(*v.StringValue)
+			}
+		}
+	}
+
+	msgSize := len(w.Message) + len(w.Subject) + attributeSize
 	if msgSize > maxSNSMessageSize {
-		return fmt.Errorf("notification exceeds maximum SNS message size of %d bytes", maxSNSMessageSize)
+		return fmt.Errorf("notification exceeds maximum SNS message size of %d bytes (current: %d)", maxSNSMessageSize, msgSize)
 	}
 	return nil
 }
@@ -144,8 +177,13 @@ func (w *SNSNotification) validate() error {
 	if w.Message == "" {
 		return errors.New("message is required")
 	}
-	if err := w.parseRecipients(); err != nil && !w.IsServiceToService {
-		return err
+	if w.IsFIFO && w.TypeID == "" && w.MessageGroupID == "" {
+		return errors.New("FIFO topics require either TypeID or MessageGroupID")
+	}
+	if !w.IsServiceToService {
+		if err := w.parseRecipients(); err != nil {
+			return err
+		}
 	}
 	if err := w.parseBody(); err != nil {
 		return fmt.Errorf("invalid JSON body: %v", err)
