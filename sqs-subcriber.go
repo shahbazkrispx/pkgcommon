@@ -11,7 +11,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
-	"github.com/aws/aws-sdk-go/aws"
 )
 
 func init() {
@@ -31,6 +30,7 @@ const (
 	visibilityTimeout = 30
 )
 
+// SQSSubscriber provides a worker pool for processing SQS messages
 type SQSSubscriber struct {
 	client      *sqs.Client
 	queueURL    *string
@@ -39,12 +39,19 @@ type SQSSubscriber struct {
 	wg          sync.WaitGroup
 	ctx         context.Context
 	cancel      context.CancelFunc
+	started     bool
+	mu          sync.Mutex
 }
 
+// MessageHandler defines the function signature for processing SQS messages
 type MessageHandler func(msg *types.Message) error
 
 func NewSQSSubscriber(queueName string, workerCount int) (*SQSSubscriber, error) {
-	cfg, err := config.LoadDefaultConfig(context.TODO())
+	if workerCount <= 0 || workerCount > maxWorkers {
+		return nil, fmt.Errorf("worker count must be between 1 and %d", maxWorkers)
+	}
+
+	cfg, err := config.LoadDefaultConfig(context.Background())
 	if err != nil {
 		return nil, err
 	}
@@ -56,9 +63,15 @@ func NewSQSSubscriber(queueName string, workerCount int) (*SQSSubscriber, error)
 		queueName = fmt.Sprintf("%s_%s", os.Getenv("APP_ENV"), queueName)
 	}
 
+	accountID := os.Getenv("AWS_ACCOUNT_ID")
+	if accountID == "" {
+		cancel()
+		return nil, fmt.Errorf("AWS_ACCOUNT_ID environment variable is required")
+	}
+
 	result, err := client.GetQueueUrl(ctx, &sqs.GetQueueUrlInput{
-		QueueOwnerAWSAccountId: aws.String(os.Getenv("AWS_ACCOUNT_ID")),
-		QueueName:              aws.String(queueName),
+		QueueOwnerAWSAccountId: &accountID,
+		QueueName:              &queueName,
 	})
 	if err != nil {
 		cancel()
@@ -75,19 +88,51 @@ func NewSQSSubscriber(queueName string, workerCount int) (*SQSSubscriber, error)
 }
 
 func (s *SQSSubscriber) AddHandler(handler MessageHandler) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if handler == nil {
+		return
+	}
 	s.handlers = append(s.handlers, handler)
 }
 
 func (s *SQSSubscriber) Start() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.started {
+		return // Already started
+	}
+
+	if len(s.handlers) == 0 {
+		log.Println("Warning: No message handlers registered")
+	}
+
 	for i := 0; i < s.workerCount; i++ {
 		s.wg.Add(1)
 		go s.startWorker()
 	}
+	s.started = true
 }
 
 func (s *SQSSubscriber) Stop() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if !s.started {
+		return
+	}
+
 	s.cancel()
 	s.wg.Wait()
+	s.started = false
+}
+
+func (s *SQSSubscriber) Close() error {
+	s.Stop()
+	// Any additional cleanup if needed
+	return nil
 }
 
 func (s *SQSSubscriber) startWorker() {
@@ -96,24 +141,34 @@ func (s *SQSSubscriber) startWorker() {
 	for {
 		select {
 		case <-s.ctx.Done():
+			log.Println("Worker shutting down gracefully")
 			return
 		default:
 			messages, err := s.receiveMessages()
 			if err != nil {
 				log.Printf("Error receiving messages: %v", err)
-				time.Sleep(time.Second)
-				continue
+				select {
+				case <-s.ctx.Done():
+					return
+				case <-time.After(time.Second):
+					continue
+				}
 			}
 
 			for _, msg := range messages.Messages {
-				s.processMessage(&msg)
+				select {
+				case <-s.ctx.Done():
+					return
+				default:
+					s.processMessage(&msg)
+				}
 			}
 		}
 	}
 }
 
 func (s *SQSSubscriber) receiveMessages() (*sqs.ReceiveMessageOutput, error) {
-	output, err := s.client.ReceiveMessage(context.TODO(), &sqs.ReceiveMessageInput{
+	return s.client.ReceiveMessage(s.ctx, &sqs.ReceiveMessageInput{
 		AttributeNames: []types.QueueAttributeName{
 			types.QueueAttributeNameAll,
 		},
@@ -125,12 +180,6 @@ func (s *SQSSubscriber) receiveMessages() (*sqs.ReceiveMessageOutput, error) {
 		WaitTimeSeconds:     waitTimeSeconds,
 		VisibilityTimeout:   visibilityTimeout,
 	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	return output, nil
 }
 
 func (s *SQSSubscriber) processMessage(msg *types.Message) {
@@ -147,12 +196,14 @@ func (s *SQSSubscriber) processMessage(msg *types.Message) {
 
 	// If message was processed successfully, delete it
 	if processError == nil {
-		_, err := s.client.DeleteMessage(context.TODO(), &sqs.DeleteMessageInput{
-			QueueUrl:      s.queueURL,
-			ReceiptHandle: msg.ReceiptHandle,
-		})
-		if err != nil {
-			log.Printf("Error deleting message: %v", err)
+		if msg.ReceiptHandle != nil {
+			_, err := s.client.DeleteMessage(s.ctx, &sqs.DeleteMessageInput{
+				QueueUrl:      s.queueURL,
+				ReceiptHandle: msg.ReceiptHandle,
+			})
+			if err != nil {
+				log.Printf("Error deleting message: %v", err)
+			}
 		}
 	}
 }
