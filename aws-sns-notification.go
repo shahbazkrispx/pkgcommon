@@ -35,6 +35,13 @@ type SNSNotification struct {
 // maxSNSMessageSize defines the maximum size in bytes for an SNS message (256KB)
 const maxSNSMessageSize = 256 * 1024
 
+// maxRawDeliveryAttributes is the most message attributes SNS delivers to a
+// raw-delivery SQS subscription. SNS silently discards a message carrying more
+// (Publish still succeeds), so over the limit a notification just vanishes.
+// That's how friend-request cards disappeared on dev in KX-1217; validate
+// turns it into an error the caller logs.
+const maxRawDeliveryAttributes = 10
+
 // Send publishes the notification to SNS after validating the message
 // Returns an error if validation fails or the publish fails
 func (w *SNSNotification) Send(ctx context.Context) error {
@@ -75,7 +82,6 @@ func (w *SNSNotification) parseRecipients() error {
 // build creates SNS message attributes from the notification
 // Returns an SNS PublishInput with the notification data and attributes
 func (w *SNSNotification) build() *sns.PublishInput {
-	attributes := make(map[string]*sns.MessageAttributeValue)
 	input := &sns.PublishInput{
 		TopicArn: aws.String(w.getTopic()),
 		Message:  aws.String(w.Message),
@@ -84,6 +90,24 @@ func (w *SNSNotification) build() *sns.PublishInput {
 	if w.Subject != "" {
 		input.Subject = aws.String(w.Subject)
 	}
+
+	if w.IsFIFO && w.TypeID != "" {
+		input.MessageDeduplicationId = aws.String(w.TypeID)
+		if w.MessageGroupID != "" {
+			input.MessageGroupId = aws.String(w.MessageGroupID)
+		}
+	}
+
+	if attributes := w.attributes(); len(attributes) > 0 {
+		input.MessageAttributes = attributes
+	}
+	return input
+}
+
+// attributes returns the exact attribute set build publishes, so validate
+// can count what SNS will receive.
+func (w *SNSNotification) attributes() map[string]*sns.MessageAttributeValue {
+	attributes := make(map[string]*sns.MessageAttributeValue)
 	// Add non-empty attributes only
 	if w.Type != "" {
 		attributes["type"] = &sns.MessageAttributeValue{
@@ -93,13 +117,6 @@ func (w *SNSNotification) build() *sns.PublishInput {
 	}
 
 	if w.TypeID != "" {
-		if w.IsFIFO {
-			input.MessageDeduplicationId = aws.String(w.TypeID)
-			if w.MessageGroupID != "" {
-				input.MessageGroupId = aws.String(w.MessageGroupID)
-			}
-		}
-
 		attributes["typeId"] = &sns.MessageAttributeValue{
 			DataType:    aws.String("String"),
 			StringValue: aws.String(w.TypeID),
@@ -120,17 +137,13 @@ func (w *SNSNotification) build() *sns.PublishInput {
 		}
 	}
 
-	// Add extra message attributes before setting input.MessageAttributes
+	// Extra attributes win over the built-in ones on a key clash.
 	if w.ExtraMessageAttributes != nil {
 		for k, v := range w.ExtraMessageAttributes {
 			attributes[k] = v
 		}
 	}
-
-	if len(attributes) > 0 {
-		input.MessageAttributes = attributes
-	}
-	return input
+	return attributes
 }
 
 // validateMessageSize checks if the total message size is within SNS limits
@@ -190,6 +203,9 @@ func (w *SNSNotification) validate() error {
 	}
 	if err := w.validateMessageSize(); err != nil {
 		return err
+	}
+	if n := len(w.attributes()); n > maxRawDeliveryAttributes {
+		return fmt.Errorf("notification carries %d message attributes; SNS silently drops messages with more than %d on raw-delivery SQS subscriptions", n, maxRawDeliveryAttributes)
 	}
 	return nil
 }
